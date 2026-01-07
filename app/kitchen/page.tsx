@@ -15,6 +15,22 @@ export default function KitchenDisplay() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+  const updateTime = () => {
+    setCurrentTime(
+      new Date().toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    );
+  };
+
+  updateTime(); // initial set
+  const interval = setInterval(updateTime, 1000);
+  return () => clearInterval(interval);
+}, []);
+  const [currentTime, setCurrentTime] = useState('');
   const fetchOrders = async () => {
     try {
       const res = await fetch('/api/kitchen');
@@ -74,7 +90,7 @@ export default function KitchenDisplay() {
           <div className="text-right">
             <div className="text-sm text-gray-400">Current Time</div>
             <div className="text-3xl font-mono">
-              {new Date().toLocaleTimeString()}
+              {currentTime}
             </div>
           </div>
         </div>
@@ -208,4 +224,8 @@ export default function KitchenDisplay() {
       )}
     </div>
   );
+}
+
+function setCurrentTime(arg0: string) {
+  throw new Error('Function not implemented.');
 }

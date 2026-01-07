@@ -26,7 +26,11 @@ export default function ManagerDashboard() {
       const res = await fetch('/api/analytics');
       const data = await res.json();
       if (data.success) {
-        setDailySales(data.data.daily_sales);
+        setDailySales({
+          ...data.dailySales,
+          avg_order_value: Number(data.dailySales.avg_order_value),
+        });
+
         setTopItems(data.data.top_selling_items);
         setHourlyOrders(data.data.hourly_orders);
         setLowStockItems(data.data.low_stock_items);

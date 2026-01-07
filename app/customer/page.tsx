@@ -233,7 +233,8 @@ export default function CustomerKiosk() {
                 <p className="text-gray-600 text-sm mb-3">{item.description}</p>
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-bold text-red-600">
-                    KSh {item.base_price.toFixed(2)}
+                    <span>KSh {Number(item.base_price).toFixed(2)}</span>
+
                   </span>
                   {item.stock_quantity <= item.low_stock_threshold && (
                     <span className="text-xs text-orange-600 font-semibold">Low Stock</span>
@@ -277,7 +278,9 @@ export default function CustomerKiosk() {
                               <div className="font-medium">{option.option_name}</div>
                               {option.price_modifier > 0 && (
                                 <div className="text-sm text-gray-600">
-                                  +KSh {option.price_modifier.toFixed(2)}
+                                +KSh {option.price_modifier
+                                  ? Number(option.price_modifier).toFixed(2)
+                                  : '0.00'}
                                 </div>
                               )}
                             </button>
