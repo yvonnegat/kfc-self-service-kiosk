@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { User } from '@/types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -12,13 +12,15 @@ export async function hashPassword(password: string): Promise<string> {
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
-
-export function generateToken(user: User): string {
-  return jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
-    JWT_SECRET,
-    { expiresIn: '24h' }
-  );
+export function generateToken(payload: {
+  id: number;
+  username: string;
+  role: string;
+}) {
+  return jwt.sign(payload, process.env.JWT_SECRET!, {
+    algorithm: 'HS256',
+    expiresIn: '1d',
+  });
 }
 
 export function verifyToken(token: string): User | null {
