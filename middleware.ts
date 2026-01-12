@@ -1,25 +1,31 @@
-// middleware.ts - FIXED VERSION
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from '@/lib/auth-edge';
 
-// Define protected routes and their required roles
-const protectedRoutes = {
+// Protected routes and roles
+const protectedRoutes: Record<
+  string,
+  string[] | Record<string, string[]>
+> = {
   '/kitchen': ['kitchen', 'manager'],
   '/manager': ['manager'],
   '/api/kitchen': ['kitchen', 'manager'],
   '/api/analytics': ['manager'],
-  '/api/menu': { 
-    GET: ['public'], 
-    PUT: ['manager'], 
-    POST: ['manager'] 
+  '/api/menu': {
+    GET: ['public'],
+    POST: ['manager'],
+    PUT: ['manager'],
+  },
+  '/api/categories': {
+    GET: ['public'],
   },
 };
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const method = request.method;
 
-  // Allow public routes
+  /* -------------------- PUBLIC ROUTES -------------------- */
   if (
     pathname === '/' ||
     pathname === '/login' ||
@@ -31,45 +37,58 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const isProtected = Object.keys(protectedRoutes).some(route =>
+  /* -------------------- CHECK IF PROTECTED -------------------- */
+  const matchedRoute = Object.keys(protectedRoutes).find(route =>
     pathname.startsWith(route)
   );
 
-  if (!isProtected) {
+  if (!matchedRoute) {
     return NextResponse.next();
   }
 
+  /* -------------------- REQUIRED ROLES -------------------- */
+  const routeConfig = protectedRoutes[matchedRoute];
+  let requiredRoles: string[] = [];
+
+  if (typeof routeConfig === 'object' && !Array.isArray(routeConfig)) {
+    requiredRoles = routeConfig[method] || [];
+  } else {
+    requiredRoles = routeConfig as string[];
+  }
+
+  // ✅ Public GET access (menu, categories)
+  if (requiredRoles.includes('public')) {
+    return NextResponse.next();
+  }
+
+  /* -------------------- AUTH TOKEN -------------------- */
   const token =
     request.cookies.get('auth_token')?.value ||
     request.headers.get('authorization')?.replace('Bearer ', '');
 
   if (!token) {
     return pathname.startsWith('/api')
-      ? NextResponse.json({ success: false }, { status: 401 })
+      ? NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
       : NextResponse.redirect(new URL('/login', request.url));
   }
 
+  /* -------------------- VERIFY TOKEN -------------------- */
   const user = await verifyToken(token);
 
   if (!user) {
     return pathname.startsWith('/api')
-      ? NextResponse.json({ success: false }, { status: 401 })
+      ? NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 })
       : NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // ✅ ROLE CHECK (you were missing this)
-  const requiredRoles = getRequiredRoles(pathname, request.method);
-
-  if (
-    !requiredRoles.includes('public') &&
-    !requiredRoles.includes(user.role)
-  ) {
+  /* -------------------- ROLE CHECK -------------------- */
+  if (!requiredRoles.includes(user.role)) {
     return pathname.startsWith('/api')
-      ? NextResponse.json({ success: false }, { status: 403 })
+      ? NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
       : NextResponse.redirect(new URL('/unauthorized', request.url));
   }
 
-  // Attach user headers
+  /* -------------------- ATTACH USER HEADERS -------------------- */
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', String(user.id));
   requestHeaders.set('x-user-role', user.role);
@@ -82,23 +101,9 @@ export async function middleware(request: NextRequest) {
   });
 }
 
-
-
-function getRequiredRoles(pathname: string, method: string): string[] {
-  for (const [route, roles] of Object.entries(protectedRoutes)) {
-    if (pathname.startsWith(route)) {
-      // Handle method-specific roles
-      if (typeof roles === 'object' && !Array.isArray(roles)) {
-        return roles[method as keyof typeof roles] || [];
-      }
-      return roles as string[];
-    }
-  }
-  return ['public'];
-}
-
+/* -------------------- MATCHER -------------------- */
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
