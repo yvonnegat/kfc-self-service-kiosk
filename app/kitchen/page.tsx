@@ -1,39 +1,92 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, AlertCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Clock, AlertCircle, LogOut } from 'lucide-react';
 import { Order, OrderStatus } from '@/types';
 
 export default function KitchenDisplay() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [queueLength, setQueueLength] = useState(0);
   const [oldestWaitTime, setOldestWaitTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState('');
+  const [user, setUser] = useState<any>(null);
+
+
+useEffect(() => {
+  const userStr = localStorage.getItem('user');
+  
+  console.log('🔍 Kitchen Auth Check - localStorage:', userStr);
+  
+  if (!userStr) {
+    console.log('❌ No user in localStorage, redirecting to login');
+    router.push('/login');
+    return;
+  }
+  
+  try {
+    const userData = JSON.parse(userStr);
+    console.log('✅ Parsed user data:', userData);
+    
+    // Check if user has correct role
+    if (userData.role !== 'kitchen' && userData.role !== 'manager') {
+      console.log('❌ Wrong role:', userData.role);
+      router.push('/unauthorized');
+      return;
+    }
+    
+    console.log('✅ Auth check passed, setting user');
+    setUser(userData);
+  } catch (error) {
+    console.error('❌ Invalid user data:', error);
+    localStorage.removeItem('user');
+    router.push('/login');
+  }
+}, [router]);
 
   useEffect(() => {
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 5000); // Refresh every 5 seconds
+    const updateTime = () => {
+      setCurrentTime(
+        new Date().toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      );
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-  const updateTime = () => {
-    setCurrentTime(
-      new Date().toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-    );
-  };
+    if (user) {
+      fetchOrders();
+      const interval = setInterval(fetchOrders, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
-  updateTime(); // initial set
-  const interval = setInterval(updateTime, 1000);
-  return () => clearInterval(interval);
-}, []);
-  const [currentTime, setCurrentTime] = useState('');
   const fetchOrders = async () => {
     try {
-      const res = await fetch('/api/kitchen');
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('auth_token='))
+        ?.split('=')[1];
+
+      const res = await fetch('/api/kitchen', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
         setOrders(data.data.orders);
@@ -47,9 +100,17 @@ export default function KitchenDisplay() {
 
   const updateOrderStatus = async (orderId: number, newStatus: OrderStatus) => {
     try {
+      const token = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('auth_token='))
+        ?.split('=')[1];
+
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ order_status: newStatus }),
       });
 
@@ -59,6 +120,12 @@ export default function KitchenDisplay() {
     } catch (error) {
       console.error('Failed to update order:', error);
     }
+  };
+
+  const handleLogout = () => {
+    document.cookie = 'auth_token=; path=/; max-age=0';
+    localStorage.removeItem('user');
+    router.push('/login');
   };
 
   const getWaitTime = (createdAt: string) => {
@@ -81,17 +148,37 @@ export default function KitchenDisplay() {
     }
   };
 
+  if (!user) {
+    return <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="text-white text-2xl">Loading...</div>
+    </div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       {/* Header */}
       <header className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-5xl font-bold">🍗 Kitchen Display System</h1>
-          <div className="text-right">
-            <div className="text-sm text-gray-400">Current Time</div>
-            <div className="text-3xl font-mono">
-              {currentTime}
+          <div className="flex items-center gap-4">
+            <h1 className="text-5xl font-bold">🍗 Kitchen Display System</h1>
+            <div className="bg-gray-800 px-4 py-2 rounded-lg">
+              <span className="text-gray-400 text-sm">Logged in as: </span>
+              <span className="font-semibold">{user.username}</span>
+              <span className="text-gray-400 text-sm ml-2">({user.role})</span>
             </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-sm text-gray-400">Current Time</div>
+              <div className="text-3xl font-mono">{currentTime}</div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition"
+            >
+              <LogOut size={20} />
+              Logout
+            </button>
           </div>
         </div>
 
@@ -136,7 +223,6 @@ export default function KitchenDisplay() {
                   isUrgent ? 'border-red-500 animate-pulse' : 'border-gray-700'
                 }`}
               >
-                {/* Order Header */}
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <div className="text-sm text-gray-400">Order Number</div>
@@ -155,7 +241,6 @@ export default function KitchenDisplay() {
                   </div>
                 </div>
 
-                {/* Urgent Alert */}
                 {isUrgent && (
                   <div className="bg-red-600 rounded-lg p-3 mb-4 flex items-center gap-2">
                     <AlertCircle size={24} />
@@ -163,7 +248,6 @@ export default function KitchenDisplay() {
                   </div>
                 )}
 
-                {/* Order Items */}
                 <div className="space-y-3 mb-6">
                   {order.items?.map((item, index) => (
                     <div key={index} className="bg-gray-700 rounded-lg p-4">
@@ -188,7 +272,6 @@ export default function KitchenDisplay() {
                   ))}
                 </div>
 
-                {/* Action Buttons */}
                 <div className="grid grid-cols-1 gap-3">
                   {order.order_status === 'new' && (
                     <button
@@ -224,8 +307,4 @@ export default function KitchenDisplay() {
       )}
     </div>
   );
-}
-
-function setCurrentTime(arg0: string) {
-  throw new Error('Function not implemented.');
 }

@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { DollarSign, ShoppingBag, TrendingUp, AlertTriangle, Edit2, Check, X } from 'lucide-react';
+import { DollarSign, ShoppingBag, TrendingUp, AlertTriangle, Edit2, Check, X, LogOut } from 'lucide-react';
 import { DailySales, TopSellingItem, HourlyOrders, LowStockItem, MenuItem } from '@/types';
 
 export default function ManagerDashboard() {
+  const router = useRouter();
   const [dailySales, setDailySales] = useState<DailySales | null>(null);
   const [topItems, setTopItems] = useState<TopSellingItem[]>([]);
   const [hourlyOrders, setHourlyOrders] = useState<HourlyOrders[]>([]);
@@ -13,24 +15,65 @@ export default function ManagerDashboard() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [editingItem, setEditingItem] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ price: '', stock: '', available: true });
+  const [user, setUser] = useState<any>(null);
 
-  useEffect(() => {
-    fetchAnalytics();
-    fetchMenuItems();
-    const interval = setInterval(fetchAnalytics, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
+  // Check authentication on mount
+ // FIXED MANAGER AUTH CHECK - Replace BOTH useEffect blocks with this SINGLE one:
+
+useEffect(() => {
+  const userStr = localStorage.getItem('user');
+  
+  if (!userStr) {
+    // No user data, redirect to login
+    router.push('/login');
+    return;
+  }
+  
+  try {
+    const userData = JSON.parse(userStr);
+    
+    // Managers ONLY - strict check
+    if (userData.role !== 'manager') {
+      router.push('/unauthorized');
+      return;
+    }
+    
+    // All checks passed, set user
+    setUser(userData);
+  } catch (error) {
+    // Invalid data in localStorage
+    console.error('Invalid user data:', error);
+    localStorage.removeItem('user');
+    router.push('/login');
+  }
+}, [router]);
+
+
+  const getAuthHeaders = () => {
+    const token = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('auth_token='))
+      ?.split('=')[1];
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+  };
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch('/api/analytics');
+      const res = await fetch('/api/analytics', {
+        headers: getAuthHeaders(),
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
-        setDailySales({
-          ...data.dailySales,
-          avg_order_value: Number(data.dailySales.avg_order_value),
-        });
-
+        setDailySales(data.data.daily_sales);
         setTopItems(data.data.top_selling_items);
         setHourlyOrders(data.data.hourly_orders);
         setLowStockItems(data.data.low_stock_items);
@@ -42,7 +85,15 @@ export default function ManagerDashboard() {
 
   const fetchMenuItems = async () => {
     try {
-      const res = await fetch('/api/menu');
+      const res = await fetch('/api/menu', {
+        headers: getAuthHeaders(),
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
         setMenuItems(data.data);
@@ -70,7 +121,7 @@ export default function ManagerDashboard() {
     try {
       const res = await fetch('/api/menu', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           id: itemId,
           base_price: parseFloat(editForm.price),
@@ -88,11 +139,38 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    document.cookie = 'auth_token=; path=/; max-age=0';
+    localStorage.removeItem('user');
+    router.push('/login');
+  };
+
+  if (!user) {
+    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="text-2xl">Loading...</div>
+    </div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       {/* Header */}
       <header className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Manager Dashboard</h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-4xl font-bold text-gray-800">Manager Dashboard</h1>
+          <div className="flex items-center gap-4">
+            <div className="bg-white px-4 py-2 rounded-lg shadow">
+              <span className="text-gray-600 text-sm">Logged in as: </span>
+              <span className="font-semibold">{user.username}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition"
+            >
+              <LogOut size={20} />
+              Logout
+            </button>
+          </div>
+        </div>
         <p className="text-gray-600">
           {new Date().toLocaleDateString('en-US', { 
             weekday: 'long', 
@@ -111,8 +189,7 @@ export default function ManagerDashboard() {
             <DollarSign className="text-green-600" size={32} />
           </div>
           <div className="text-4xl font-bold text-gray-800">
-          <span>KSh {dailySales?.total_revenue ? Number(dailySales.total_revenue).toFixed(2) : '0.00'}</span>
-
+            KSh {dailySales?.total_revenue ? Number(dailySales.total_revenue).toFixed(2) : '0.00'}
           </div>
           <div className="text-sm text-gray-500 mt-2">
             {dailySales?.total_orders || 0} orders completed
@@ -125,7 +202,7 @@ export default function ManagerDashboard() {
             <ShoppingBag className="text-blue-600" size={32} />
           </div>
           <div className="text-4xl font-bold text-gray-800">
-            KSh {dailySales?.avg_order_value.toFixed(2) || '0.00'}
+            KSh {dailySales?.avg_order_value ? Number(dailySales.avg_order_value).toFixed(2) : '0.00'}
           </div>
           <div className="text-sm text-gray-500 mt-2">
             Per transaction
@@ -170,7 +247,7 @@ export default function ManagerDashboard() {
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-green-600">
-                    KSh {item.total_revenue.toFixed(2)}
+                    KSh {Number(item.total_revenue).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -190,7 +267,7 @@ export default function ManagerDashboard() {
               />
               <YAxis />
               <Tooltip 
-                labelFormatter={(hour) => `${hour}:00 - ${hour + 1}:00`}
+                labelFormatter={(hour) => `${hour}:00 - ${Number(hour) + 1}:00`}
                 formatter={(value) => [`${value} orders`, 'Orders']}
               />
               <Bar dataKey="order_count" fill="#dc2626" />
@@ -252,8 +329,7 @@ export default function ManagerDashboard() {
                         step="0.01"
                       />
                     ) : (
-                     <span>KSh {(Number(item.base_price) || 0).toFixed(2)}</span>
-
+                      <span>KSh {Number(item.base_price).toFixed(2)}</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
