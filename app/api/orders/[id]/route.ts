@@ -1,120 +1,128 @@
-import { NextRequest, NextResponse } from 'next/server';
+// app/api/orders/[id]/route.ts
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { RowDataPacket } from 'mysql2';
+import { handleApiError, successResponse } from '@/lib/utils';
 
+// GET - Fetch single order details
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const orderId = params.id;
-
-    // Get order details
-    const [orders] = await pool.query<RowDataPacket[]>(
-      'SELECT * FROM orders WHERE id = ?',
-      [orderId]
+    const [orders] = await pool.execute(
+      `SELECT 
+        o.id,
+        o.order_number,
+        o.total_amount,
+        o.payment_method,
+        o.payment_status,
+        o.order_status,
+        o.estimated_wait_time,
+        o.created_at,
+        o.updated_at,
+        TIMESTAMPDIFF(MINUTE, o.created_at, NOW()) as wait_time_minutes
+      FROM orders o
+      WHERE o.id = ?`,
+      [params.id]
     );
 
-    if (orders.length === 0) {
+    if ((orders as any[]).length === 0) {
       return NextResponse.json(
-        { success: false, error: 'Order not found' },
+        {
+          success: false,
+          error: 'NOT_FOUND',
+          message: 'Order not found',
+        },
         { status: 404 }
       );
     }
 
-    const order = orders[0];
+    const order = (orders as any[])[0];
 
-    // Get order items with menu item details
-    const [items] = await pool.query<RowDataPacket[]>(
+    // Fetch order items with customizations
+    const [items] = await pool.execute(
       `SELECT 
-        oi.*,
+        oi.id,
+        oi.quantity,
+        oi.unit_price,
+        oi.subtotal,
+        oi.special_instructions,
         mi.name as menu_item_name,
-        mi.image_url
+        mi.image_url,
+        GROUP_CONCAT(
+          CONCAT(co.option_type, ':', co.option_name)
+          SEPARATOR '|'
+        ) as customizations
       FROM order_items oi
       JOIN menu_items mi ON oi.menu_item_id = mi.id
-      WHERE oi.order_id = ?`,
-      [orderId]
+      LEFT JOIN order_item_customizations oic ON oi.id = oic.order_item_id
+      LEFT JOIN customization_options co ON oic.customization_option_id = co.id
+      WHERE oi.order_id = ?
+      GROUP BY oi.id`,
+      [params.id]
     );
 
-    // Get customizations for each item
-    const itemsWithCustomizations = await Promise.all(
-      items.map(async (item) => {
-        const [customizations] = await pool.query<RowDataPacket[]>(
-          `SELECT co.* 
-           FROM order_item_customizations oic
-           JOIN customization_options co ON oic.customization_option_id = co.id
-           WHERE oic.order_item_id = ?`,
-          [item.id]
-        );
-
-        return {
-          ...item,
-          customizations,
-        };
+    return NextResponse.json(
+      successResponse({
+        ...order,
+        items,
       })
     );
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...order,
-        items: itemsWithCustomizations,
-      },
-    });
   } catch (error) {
-    console.error('Order detail fetch error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch order details' },
-      { status: 500 }
-    );
+    return NextResponse.json(handleApiError(error), { status: 500 });
   }
 }
 
+// PATCH - Update order status
 export async function PATCH(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const orderId = params.id;
     const body = await request.json();
     const { order_status } = body;
 
-    if (!order_status) {
-      return NextResponse.json(
-        { success: false, error: 'order_status is required' },
-        { status: 400 }
-      );
-    }
-
     const validStatuses = ['new', 'in_progress', 'ready', 'completed', 'cancelled'];
+    
     if (!validStatuses.includes(order_status)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid order status' },
+        {
+          success: false,
+          error: 'INVALID_STATUS',
+          message: `Status must be one of: ${validStatuses.join(', ')}`,
+        },
         { status: 400 }
       );
     }
 
-    await pool.query(
-      'UPDATE orders SET order_status = ?, updated_at = NOW() WHERE id = ?',
-      [order_status, orderId]
+    // Update order status
+    const [result] = await pool.execute(
+      `UPDATE orders 
+       SET order_status = ?,
+           updated_at = CURRENT_TIMESTAMP,
+           completed_at = CASE 
+             WHEN ? = 'completed' THEN CURRENT_TIMESTAMP 
+             ELSE completed_at 
+           END
+       WHERE id = ?`,
+      [order_status, order_status, params.id]
     );
 
-    if (order_status === 'completed') {
-      await pool.query(
-        'UPDATE orders SET completed_at = NOW() WHERE id = ?',
-        [orderId]
+    if ((result as any).affectedRows === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'NOT_FOUND',
+          message: 'Order not found',
+        },
+        { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Order status updated successfully',
-    });
-  } catch (error) {
-    console.error('Order update error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to update order status' },
-      { status: 500 }
+      successResponse(null, `Order status updated to ${order_status}`)
     );
+  } catch (error) {
+    return NextResponse.json(handleApiError(error), { status: 500 });
   }
 }
