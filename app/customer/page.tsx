@@ -200,7 +200,14 @@ export default function CustomerKiosk() {
 
   // Initialize session on mount
   useEffect(() => {
-    initSession();
+    // Only initialize if no session exists
+    if (!window.sessionData) {
+      initSession();
+    } else {
+      // Restore existing session
+      setCart(window.sessionData.cart || []);
+      setSelectedCategory(window.sessionData.selectedCategory);
+    }
   }, [initSession]);
 
   // Fetch categories from API
@@ -321,14 +328,29 @@ export default function CustomerKiosk() {
   const checkout = async (paymentMethod: 'card' | 'mobile_money') => {
     try {
       const orderData = {
-        items: cart.map(item => ({
-          menu_item_id: item.menu_item.id,
-          quantity: item.quantity,
-          selected_customizations: item.selected_customizations.map(c => c.id),
-          special_instructions: item.special_instructions,
-        })),
-        payment_method: paymentMethod,
-      };
+  items: cart.map(item => {
+    // Calculate unit price (base price + customizations)
+    const customizationPrice = item.selected_customizations.reduce(
+      (sum, c) => sum + c.price_modifier, 
+      0
+    );
+    const unitPrice = item.menu_item.base_price + customizationPrice;
+    
+    return {
+      menu_item_id: item.menu_item.id,
+      quantity: item.quantity,
+      unit_price: unitPrice,
+      customizations: item.selected_customizations.length > 0 
+        ? item.selected_customizations.map(c => c.id)
+        : [],
+      special_instructions: item.special_instructions || '',
+    };
+  }),
+  payment_method: paymentMethod,
+  total_amount: getCartTotal(),
+};
+
+      console.log('Submitting order:', orderData);
 
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -337,6 +359,12 @@ export default function CustomerKiosk() {
       });
 
       const data = await res.json();
+      
+      if (!res.ok) {
+        console.error('Order API error:', data);
+        throw new Error(data.error || data.message || 'Order creation failed');
+      }
+
       if (data.success && data.data) {
         setOrderNumber(data.data.order_number);
         setOrderComplete(true);
@@ -354,12 +382,12 @@ export default function CustomerKiosk() {
           endSession();
         }, 10000);
       } else {
-        console.error('Order creation failed:', data.error);
-        alert('Failed to create order. Please try again.');
+        throw new Error(data.error || 'Order creation failed');
       }
     } catch (error) {
       console.error('Error creating order:', error);
-      alert('An error occurred. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      alert(`Failed to create order: ${errorMessage}\n\nPlease try again or contact staff for assistance.`);
     }
   };
 
