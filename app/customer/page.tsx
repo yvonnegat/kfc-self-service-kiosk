@@ -190,7 +190,7 @@ export default function CustomerKiosk() {
       {/* LEFT SIDE */}
       <div className="flex-1 flex flex-col">
         {/* HEADER */}
-        <div className="bg-red-600 text-white px-10 py-2">
+        <div className="bg-red-600 text-white px-10g py-2">
           <h1 className="text-3xl font-bold">Welcome to KFC</h1>
           <p className="opacity-90">Touch to start your order</p>
         </div>
