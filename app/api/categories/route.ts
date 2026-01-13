@@ -1,24 +1,29 @@
+// app/api/categories/route.ts
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { RowDataPacket } from 'mysql2';
+import { handleApiError, successResponse } from '@/lib/utils';
 
+// GET - Fetch all active categories with item counts
 export async function GET() {
   try {
-    const [categories] = await pool.query<RowDataPacket[]>(
-      `SELECT * FROM categories 
-       WHERE is_active = TRUE 
-       ORDER BY display_order`
+    const [categories] = await pool.execute(
+      `SELECT 
+        c.id,
+        c.name,
+        c.display_order,
+        COUNT(mi.id) as item_count,
+        SUM(CASE WHEN mi.is_available = TRUE THEN 1 ELSE 0 END) as available_count
+      FROM categories c
+      LEFT JOIN menu_items mi ON c.id = mi.category_id
+      WHERE c.is_active = TRUE
+      GROUP BY c.id
+      ORDER BY c.display_order`
     );
 
-    return NextResponse.json({
-      success: true,
-      data: categories,
-    });
-  } catch (error) {
-    console.error('Categories fetch error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch categories' },
-      { status: 500 }
+      successResponse(categories, 'Categories loaded')
     );
+  } catch (error) {
+    return NextResponse.json(handleApiError(error), { status: 500 });
   }
 }
