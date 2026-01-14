@@ -3,13 +3,11 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { handleApiError, successResponse } from '@/lib/utils';
 
-// GET - Fetch all menu items with categories and customizations
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('category_id');
 
-    // Build query with optional category filter
     let query = `
       SELECT 
         mi.id,
@@ -36,10 +34,8 @@ export async function GET(request: Request) {
 
     query += ` ORDER BY c.display_order, mi.name`;
 
-    // Execute query using connection pool
     const [items] = await pool.execute(query, params);
 
-    // Fetch customizations for all items in parallel (scalable!)
     const itemsWithCustomizations = await Promise.all(
       (items as any[]).map(async (item) => {
         const [customizations] = await pool.execute(
@@ -58,7 +54,7 @@ export async function GET(request: Request) {
 
         return {
           ...item,
-          customizations: customizations,
+          customizations,
         };
       })
     );
@@ -68,21 +64,5 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     return NextResponse.json(handleApiError(error), { status: 500 });
-  }
-}
-
-// GET Categories
-export async function getCategories() {
-  try {
-    const [categories] = await pool.execute(
-      `SELECT id, name, display_order
-       FROM categories
-       WHERE is_active = TRUE
-       ORDER BY display_order`
-    );
-
-    return categories;
-  } catch (error) {
-    throw error;
   }
 }
