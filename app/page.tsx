@@ -97,30 +97,10 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Security Features Notice */}
-        <div className="mt-12 bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 text-white">
-          <h3 className="text-2xl font-bold mb-4 text-center">🔒 Security Features</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="text-center">
-              <div className="font-semibold mb-2">Role-Based Access</div>
-              <div className="opacity-90">Kitchen staff and managers need authentication</div>
-            </div>
-            <div className="text-center">
-              <div className="font-semibold mb-2">JWT Authentication</div>
-              <div className="opacity-90">Secure token-based session management</div>
-            </div>
-            <div className="text-center">
-              <div className="font-semibold mb-2">Auto-Logout</div>
-              <div className="opacity-90">Customer sessions clear after order completion</div>
-            </div>
-          </div>
-        </div>
+    
+        
 
-        <div className="mt-8 text-center text-white">
-          <p className="text-lg opacity-75">
-            Built with Next.js, React, TypeScript & MySQL
-          </p>
-        </div>
+        
       </div>
     </div>
   );
