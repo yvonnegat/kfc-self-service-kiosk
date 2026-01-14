@@ -30,16 +30,27 @@ useEffect(() => {
   }
   
   try {
-    const userData = JSON.parse(userStr);
+      const userData = JSON.parse(userStr);
+      if (userData.role !== 'manager') {
+        router.push('/unauthorized');
+        return;
+      }
+      setUser(userData); // Set the user
+      fetchAnalytics();
+      fetchMenuItems();
+
+      // 2. Refresh every 15 seconds
+      const interval = setInterval(() => {
+        console.log("📊 Manager: Updating analytics...");
+        fetchAnalytics();
+        // We generally don't auto-refresh menu items to avoid flickering while editing
+        // fetchMenuItems(); 
+      }, 15000);
+
+      return () => clearInterval(interval);
+      // 🟢 END REAL-TIME UPDATES
+
     
-    // Managers ONLY - strict check
-    if (userData.role !== 'manager') {
-      router.push('/unauthorized');
-      return;
-    }
-    
-    // All checks passed, set user
-    setUser(userData);
   } catch (error) {
     // Invalid data in localStorage
     console.error('Invalid user data:', error);
@@ -93,7 +104,7 @@ useEffect(() => {
         handleLogout();
         return;
       }
-
+      
       const data = await res.json();
       if (data.success) {
         setMenuItems(data.data);
@@ -102,6 +113,29 @@ useEffect(() => {
       console.error('Failed to fetch menu items:', error);
     }
   };
+  // ... existing fetchMenuItems function ...
+
+  // ✅ ADD THIS NEW USE EFFECT
+  // This triggers the data fetch once the user is logged in
+  useEffect(() => {
+    if (user) {
+      // 1. Fetch data immediately
+      fetchAnalytics();
+      fetchMenuItems();
+
+      // 2. Set up a "Real-time" interval (refreshes every 30 seconds)
+      const interval = setInterval(() => {
+        console.log("📊 Manager: Updating analytics...");
+        fetchAnalytics();
+        // We generally don't auto-refresh menu items to avoid flickering while editing
+        // fetchMenuItems(); 
+      }, 15000);
+
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  // ... existing startEdit function ...
 
   const startEdit = (item: MenuItem) => {
     setEditingItem(item.id);

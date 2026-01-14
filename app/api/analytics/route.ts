@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
+export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     // Daily sales totals
@@ -11,26 +12,26 @@ export async function GET() {
         COALESCE(SUM(total_amount), 0) as total_revenue,
         COALESCE(AVG(total_amount), 0) as avg_order_value
       FROM orders
-      WHERE DATE(created_at) = CURDATE()
+      WHERE created_at >= NOW()
       AND payment_status = 'completed'`
     );
 
-    // Top 5 selling items today
-    const [topItems] = await pool.query<RowDataPacket[]>(
-      `SELECT 
-        mi.id as menu_item_id,
-        mi.name,
-        SUM(oi.quantity) as total_quantity,
-        SUM(oi.subtotal) as total_revenue
-      FROM order_items oi
-      JOIN menu_items mi ON oi.menu_item_id = mi.id
-      JOIN orders o ON oi.order_id = o.id
-      WHERE DATE(o.created_at) = CURDATE()
-      AND o.payment_status = 'completed'
-      GROUP BY mi.id, mi.name
-      ORDER BY total_quantity DESC
-      LIMIT 5`
-    );
+   
+const [topItems] = await pool.query<RowDataPacket[]>(
+  `SELECT 
+    mi.id as menu_item_id,
+    mi.name,
+    SUM(oi.quantity) as total_quantity,
+    SUM(oi.subtotal) as total_revenue
+  FROM order_items oi
+  JOIN menu_items mi ON oi.menu_item_id = mi.id
+  JOIN orders o ON oi.order_id = o.id
+  WHERE o.created_at >= NOW() - INTERVAL 24 HOUR -- 👈 Changes here
+  AND o.payment_status = 'completed'
+  GROUP BY mi.id, mi.name
+  ORDER BY total_quantity DESC
+  LIMIT 5`
+);
 
     // Peak order times (hourly breakdown for today)
     const [hourlyOrders] = await pool.query<RowDataPacket[]>(
