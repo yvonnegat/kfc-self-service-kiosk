@@ -324,6 +324,42 @@ export default function CustomerKiosk() {
   const getCartTotal = () => {
     return cart.reduce((sum, item) => sum + item.item_total, 0);
   };
+  // Function to get appropriate food image based on item name
+const getItemImage = (itemName: string): string => {
+  const name = itemName.toLowerCase();
+  
+  // Chicken items
+  if (name.includes('chicken') || name.includes('zinger') || name.includes('tender') || name.includes('wing')) {
+    return 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&h=300&fit=crop';
+  }
+  // Burgers
+  if (name.includes('burger')) {
+    return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
+  }
+  // Fries
+  if (name.includes('fries') || name.includes('wedge')) {
+    return 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&h=300&fit=crop';
+  }
+  // Pizza
+  if (name.includes('pizza')) {
+    return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=300&fit=crop';
+  }
+  // Drinks/Beverages
+  if (name.includes('bottled water') || name.includes('coca cola') || name.includes('fanta') || name.includes('drink') || name.includes('juice')) {
+    return 'https://images.unsplash.com/photo-1581006852262-e4307cf6283a?w=400&h=300&fit=crop';
+  }
+  // Ice cream/Desserts
+  if (name.includes('ice cream') || name.includes('sundae') || name.includes('dessert')) {
+    return 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=300&fit=crop';
+  }
+  // Wraps
+  if (name.includes('wrap') || name.includes('twister')) {
+    return 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&h=300&fit=crop';
+  }
+  
+  // Default food image
+  return 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop';
+};
 
   const checkout = async (paymentMethod: 'card' | 'mobile_money') => {
     try {
@@ -390,6 +426,7 @@ export default function CustomerKiosk() {
       alert(`Failed to create order: ${errorMessage}\n\nPlease try again or contact staff for assistance.`);
     }
   };
+
 
   if (orderComplete) {
     return (
@@ -517,10 +554,23 @@ export default function CustomerKiosk() {
               className="bg-white rounded-2xl shadow-lg overflow-hidden cursor-pointer hover:shadow-2xl transition-all transform hover:-translate-y-2 duration-300 border-2 border-transparent hover:border-red-200"
             >
               <div className="h-56 bg-gradient-to-br from-orange-100 via-red-50 to-yellow-50 flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
-                <span className="text-7xl transform transition-transform hover:scale-110 duration-300 relative z-10">🍗</span>
+                <img 
+                  src={getItemImage(item.name)}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent hidden items-center justify-center">
+                  <span className="text-7xl transform transition-transform hover:scale-110 duration-300 relative z-10">🍗</span>
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                 {item.stock_quantity <= item.low_stock_threshold && (
-                  <div className="absolute top-3 right-3 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
+                  <div className="absolute top-3 right-3 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse z-20">
                     Low Stock
                   </div>
                 )}
