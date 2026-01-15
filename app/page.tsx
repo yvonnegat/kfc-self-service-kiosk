@@ -1,107 +1,97 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, ChefHat, BarChart3, Lock } from 'lucide-react';
+import { ShoppingCart, ChefHat, BarChart3, Lock, LayoutDashboard, ChevronRight } from 'lucide-react';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center p-8">
-      <div className="max-w-6xl w-full">
-        <div className="text-center mb-12">
-          <h1 className="text-7xl font-bold text-white mb-4">🍗 KFC Kiosk</h1>
-          <p className="text-2xl text-white opacity-90">Self-Ordering System</p>
+    <div className="min-h-screen bg-[#1a1a1a] text-slate-200 selection:bg-red-500 selection:text-white font-sans">
+      
+      {/* Decorative Red Top Bar */}
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]"></div>
+
+      <main className="max-w-7xl mx-auto px-6 py-16 flex flex-col justify-center min-h-screen">
+        
+        {/* Header Section */}
+        <div className="mb-16 space-y-4">
+          <div className="flex items-center gap-3 text-red-500 font-bold uppercase text-sm tracking-[0.2em]">
+            <LayoutDashboard size={20} />
+            <span>System Gateway</span>
+          </div>
+          <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white">
+            KFC <span className="text-red-600">KIOSK</span>
+          </h1>
+          <p className="text-slate-400 text-xl max-w-xl font-medium">
+            Select a terminal module to begin system operations.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Customer Kiosk - Public Access */}
-          <Link href="/customer">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 hover:scale-105 transition-transform cursor-pointer">
-              <div className="flex justify-center mb-6">
-                <div className="bg-red-100 p-6 rounded-full">
-                  <ShoppingCart size={64} className="text-red-600" />
-                </div>
+        {/* Navigation Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Module 1: Customer Kiosk */}
+          <Link href="/customer" className="group relative bg-[#242424] border border-white/10 rounded-3xl p-8 hover:bg-red-600 transition-all duration-500 shadow-xl">
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-white/20 transition-colors">
+                <ShoppingCart className="text-red-500 group-hover:text-white" size={32} />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 text-center mb-4">
-                Customer Kiosk
-              </h2>
-              <p className="text-gray-600 text-center mb-6">
-                Browse menu, customize orders, and place your order
+              <h2 className="text-3xl font-extrabold text-white mb-3">Customer Interface</h2>
+              <p className="text-slate-400 text-lg group-hover:text-white/90 leading-snug mb-8">
+                The primary self-service portal for menu browsing, item customization, and order placement.
               </p>
-              <div className="bg-red-600 text-white py-3 rounded-lg font-bold text-center">
-                Start Ordering
-              </div>
-              <div className="mt-4 text-center">
-                <span className="inline-flex items-center gap-2 text-sm text-green-600 font-semibold">
-                  ✓ No Login Required
-                </span>
+              <div className="inline-flex items-center gap-2 py-3 px-6 bg-red-600 group-hover:bg-white group-hover:text-red-600 rounded-full text-sm font-black uppercase tracking-widest transition-all">
+                Open Kiosk <ChevronRight size={18} />
               </div>
             </div>
           </Link>
 
-          {/* Kitchen Display - Requires Auth */}
-          <Link href="/login">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 hover:scale-105 transition-transform cursor-pointer">
-              <div className="flex justify-center mb-6">
-                <div className="bg-blue-100 p-6 rounded-full relative">
-                  <ChefHat size={64} className="text-blue-600" />
-                  <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-2">
-                    <Lock size={20} className="text-white" />
-                  </div>
-                </div>
+          {/* Module 2: Kitchen Display */}
+          <Link href="/kitchen" className="group relative bg-[#242424] border border-white/10 rounded-3xl p-8 hover:bg-blue-700 transition-all duration-500 shadow-xl">
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-white/20">
+                <ChefHat className="text-blue-500 group-hover:text-white" size={32} />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 text-center mb-4">
-                Kitchen Display
-              </h2>
-              <p className="text-gray-600 text-center mb-6">
-                View incoming orders and update order status
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-3xl font-extrabold text-white">Kitchen Display</h2>
+                <Lock size={20} className="text-slate-600 group-hover:text-white/50" />
+              </div>
+              <p className="text-slate-400 text-lg group-hover:text-white/90 leading-snug mb-8">
+                Real-time order management system designed for culinary staff to track and fulfill active orders.
               </p>
-              <div className="bg-blue-600 text-white py-3 rounded-lg font-bold text-center">
-                Staff Login
-              </div>
-              <div className="mt-4 text-center">
-                <span className="inline-flex items-center gap-2 text-sm text-orange-600 font-semibold">
-                  <Lock size={16} />
-                  Kitchen Staff Only
-                </span>
+              <div className="inline-flex items-center gap-2 py-3 px-6 bg-blue-700 group-hover:bg-white group-hover:text-blue-700 rounded-full text-sm font-black uppercase tracking-widest transition-all">
+                Staff Access <ChevronRight size={18} />
               </div>
             </div>
           </Link>
 
-          {/* Manager Dashboard - Requires Auth */}
-          <Link href="/login">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 hover:scale-105 transition-transform cursor-pointer">
-              <div className="flex justify-center mb-6">
-                <div className="bg-green-100 p-6 rounded-full relative">
-                  <BarChart3 size={64} className="text-green-600" />
-                  <div className="absolute -top-2 -right-2 bg-red-500 rounded-full p-2">
-                    <Lock size={20} className="text-white" />
-                  </div>
-                </div>
+          {/* Module 3: Manager Dashboard - UPDATED LINK */}
+          <Link href="/manager" className="group relative bg-[#242424] border border-white/10 rounded-3xl p-8 hover:bg-emerald-700 transition-all duration-500 shadow-xl">
+            <div className="relative z-10">
+              <div className="w-16 h-16 bg-emerald-600/10 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-white/20">
+                <BarChart3 className="text-emerald-500 group-hover:text-white" size={32} />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 text-center mb-4">
-                Manager Dashboard
-              </h2>
-              <p className="text-gray-600 text-center mb-6">
-                View analytics and manage menu items
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-3xl font-extrabold text-white">Administration</h2>
+                <Lock size={20} className="text-slate-600 group-hover:text-white/50" />
+              </div>
+              <p className="text-slate-400 text-lg group-hover:text-white/90 leading-snug mb-8">
+                Management tools for sales analytics, inventory tracking, and system configuration.
               </p>
-              <div className="bg-green-600 text-white py-3 rounded-lg font-bold text-center">
-                Manager Login
-              </div>
-              <div className="mt-4 text-center">
-                <span className="inline-flex items-center gap-2 text-sm text-red-600 font-semibold">
-                  <Lock size={16} />
-                  Manager Only
-                </span>
+              <div className="inline-flex items-center gap-2 py-3 px-6 bg-emerald-700 group-hover:bg-white group-hover:text-emerald-700 rounded-full text-sm font-black uppercase tracking-widest transition-all">
+                Control Panel <ChevronRight size={18} />
               </div>
             </div>
           </Link>
+
         </div>
 
-    
-        
-
-        
-      </div>
+        {/* Branding Footer */}
+        <footer className="mt-20 pt-8 border-t border-white/5 text-center md:text-left">
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.4em]">
+            KFC Project Architecture &bull; 2026
+          </p>
+        </footer>
+      </main>
     </div>
   );
 }
